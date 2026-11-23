@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Теки внутрішнього сховища, які застосунок може передати камері або іншій програмі через content://. -->
+<paths>
+    <files-path name="attachments" path="attachments/" />
+    <files-path name="reports" path="reports/" />
+    <cache-path name="camera" path="camera/" />
+</paths>

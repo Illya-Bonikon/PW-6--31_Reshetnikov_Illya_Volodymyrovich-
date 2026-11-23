@@ -49,6 +49,10 @@ object SavingsForecaster {
         )
     }
 
+    /** Оболонка після виконання кількох заходів одночасно. */
+    fun applyAll(envelope: List<EnvelopeElement>, measures: Collection<RetrofitMeasure>): List<EnvelopeElement> =
+        measures.fold(envelope) { current, measure -> current.map { if (it.kind == measure.target) apply(it, measure) else it } }
+
     private fun apply(element: EnvelopeElement, measure: RetrofitMeasure): EnvelopeElement = when {
         measure.newUValue != null -> element.copy(uValue = measure.newUValue, layers = emptyList())
         measure.thicknessMm != null && measure.conductivity != null ->

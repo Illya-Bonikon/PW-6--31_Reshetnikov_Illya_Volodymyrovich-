@@ -3,7 +3,11 @@ package ua.kpi.building_audit
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -61,6 +65,12 @@ import ua.kpi.building_audit.practical17.SensorsScreen
 import ua.kpi.building_audit.practical18.AlertsScreen
 import ua.kpi.building_audit.practical19.ConsumptionScreen
 import ua.kpi.building_audit.practical20.InstrumentsScreen
+import ua.kpi.building_audit.practical21.RetrofitScreen
+import ua.kpi.building_audit.practical22.ReadingsScreen
+import ua.kpi.building_audit.practical23.AttachmentsScreen
+import ua.kpi.building_audit.practical24.ReportScreen
+import ua.kpi.building_audit.practical26.MonitorScreen
+import ua.kpi.building_audit.settings.ThemeMode
 import ua.kpi.building_audit.practical9.RegistryScreen
 import ua.kpi.building_audit.ui.components.DeveloperInfoDialog
 import ua.kpi.building_audit.ui.theme.BuildingAuditTheme
@@ -70,9 +80,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val container = (application as EnergyAuditApp).container
         // Сповіщення відкриває застосунок одразу на потрібному екрані.
-        val startRoute = intent.getStringExtra(EXTRA_ROUTE) ?: Destination.PZ17.route
+        val startRoute = intent.getStringExtra(EXTRA_ROUTE) ?: Destination.PZ21.route
         setContent {
-            BuildingAuditTheme {
+            val mode by container.themeSettings.mode.collectAsStateWithLifecycle()
+            val dark = when (mode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            BuildingAuditTheme(darkTheme = dark) {
                 AppRoot(container, startRoute)
             }
         }
@@ -109,10 +125,18 @@ enum class Destination(val route: String, val work: String, val title: String) {
     PZ17("pz17", "ПР5", "ПЗ 17: Сенсори"),
     PZ18("pz18", "ПР5", "ПЗ 18: Сповіщення"),
     PZ19("pz19", "ПР5", "ПЗ 19: Графіки"),
-    PZ20("pz20", "ПР5", "ПЗ 20: Прилади")
+    PZ20("pz20", "ПР5", "ПЗ 20: Прилади"),
+    PZ21("pz21", "ПР6", "ПЗ 21: Анімація"),
+    PZ22("pz22", "ПР6", "ПЗ 22: CSV і JSON"),
+    PZ23("pz23", "ПР6", "ПЗ 23: Фото й документи"),
+    PZ24("pz24", "ПР6", "ПЗ 24: PDF-звіт"),
+    PZ26("pz26", "ПР6", "ПЗ 26: Ресурси й тема")
 }
 
 private const val DETAIL_ROUTE = "building/{id}"
+
+/** Мітка пункту меню для UI-тестів: назва пункту збігається із заголовком екрана, тег — унікальний. */
+fun drawerTag(destination: Destination) = "drawer_${destination.route}"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,20 +161,22 @@ fun MainHub(errorCenter: ErrorCenter, startRoute: String) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text("Енергоаудит будівель", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-                Destination.entries.groupBy { it.work }.forEach { (work, destinations) ->
-                    HorizontalDivider()
-                    Text(work, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp))
-                    destinations.forEach { destination ->
-                        NavigationDrawerItem(
-                            label = { Text(destination.title) },
-                            selected = destination.route == currentRoute,
-                            onClick = {
-                                navController.navigateTop(destination.route)
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(horizontal = 12.dp)
-                        )
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text("Енергоаудит будівель", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
+                    Destination.entries.groupBy { it.work }.forEach { (work, destinations) ->
+                        HorizontalDivider()
+                        Text(work, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp))
+                        destinations.forEach { destination ->
+                            NavigationDrawerItem(
+                                label = { Text(destination.title) },
+                                selected = destination.route == currentRoute,
+                                onClick = {
+                                    navController.navigateTop(destination.route)
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(horizontal = 12.dp).testTag(drawerTag(destination))
+                            )
+                        }
                     }
                 }
             }
@@ -184,6 +210,11 @@ fun MainHub(errorCenter: ErrorCenter, startRoute: String) {
                 composable(Destination.PZ18.route) { AlertsScreen() }
                 composable(Destination.PZ19.route) { ConsumptionScreen() }
                 composable(Destination.PZ20.route) { InstrumentsScreen() }
+                composable(Destination.PZ21.route) { RetrofitScreen() }
+                composable(Destination.PZ22.route) { ReadingsScreen() }
+                composable(Destination.PZ23.route) { AttachmentsScreen() }
+                composable(Destination.PZ24.route) { ReportScreen() }
+                composable(Destination.PZ26.route) { MonitorScreen() }
                 composable(DETAIL_ROUTE, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     BuildingDetailScreen(buildingId = entry.arguments?.getLong("id") ?: 0L, onBack = { navController.popBackStack() })
                 }

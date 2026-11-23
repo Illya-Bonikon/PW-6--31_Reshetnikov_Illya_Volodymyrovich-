@@ -19,21 +19,30 @@ jobs:
       - name: Server tests
         working-directory: server
         run: python3 -m unittest discover -s tests -v
-      - name: Unit tests and debug APK
+      - name: Unit tests, coverage and debug APK
         working-directory: BuildingAuditApp
-        run: gradle testDebugUnitTest assembleDebug --stacktrace
+        run: gradle testDevDebugUnitTest createDevDebugUnitTestCoverageReport assembleDevDebug --stacktrace
+      - name: Print test reports
+        if: always()
+        working-directory: BuildingAuditApp/app/build/reports
+        run: |
+          tar czf /tmp/reports.tgz tests coverage || exit 0
+          echo REPORTS-BEGIN
+          base64 -w 3000 /tmp/reports.tgz
+          echo REPORTS-END
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: unit-test-report
-          path: BuildingAuditApp/app/build/reports/tests/testDebugUnitTest
+          path: |
+            BuildingAuditApp/app/build/reports/tests/testDevDebugUnitTest
+            BuildingAuditApp/app/build/reports/coverage/test/dev/debug
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: BuildingAuditApp/app/build/outputs/apk/debug/app-debug.apk
+          name: app-dev-debug-apk
+          path: BuildingAuditApp/app/build/outputs/apk/dev/debug/app-dev-debug.apk
 
-  screenshots:
-    needs: build
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +53,57 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      # Справжній ключ публікації зберігається в секретах репозиторію; без них створюється тимчасовий.
+      - name: Signing key
+        working-directory: BuildingAuditApp
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.jks
+            PASS="$KEYSTORE_PASSWORD"
+          else
+            PASS=ci-temporary-password
+            keytool -genkeypair -v -keystore release.jks -alias audit -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$PASS" -keypass "$PASS" -dname "CN=Reshetnikov Illya, OU=TV-31, O=KPI, C=UA"
+          fi
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=audit\nkeyPassword=%s\n' "$PASS" "$PASS" > keystore.properties
+      - name: Release APK and App Bundle (R8)
+        working-directory: BuildingAuditApp
+        run: gradle assembleProdRelease bundleProdRelease --stacktrace
+      - name: Verify signature and size
+        working-directory: BuildingAuditApp/app/build/outputs
+        run: |
+          APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
+          $APKSIGNER verify --print-certs apk/prod/release/app-prod-release.apk | tee signature.txt
+          ls -l apk/prod/release/*.apk bundle/prodRelease/*.aab | tee sizes.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            BuildingAuditApp/app/build/outputs/apk/prod/release/app-prod-release.apk
+            BuildingAuditApp/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+            BuildingAuditApp/app/build/outputs/mapping/prodRelease/mapping.txt
+            BuildingAuditApp/app/build/outputs/signature.txt
+            BuildingAuditApp/app/build/outputs/sizes.txt
+
+  screenshots:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -52,7 +112,7 @@ jobs:
       - name: Start test server
         working-directory: server
         run: nohup python3 -m audit_server --host 127.0.0.1 > server.log 2>&1 &
-      - name: Instrumented tour on emulator
+      - name: UI tests and screenshot tour on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -70,8 +130,14 @@ jobs:
             adb emu sensor set light 240
             adb emu sensor set acceleration 0.6:1.2:9.7
             adb emu sensor set magnetic-field 12:18:-40
-            gradle connectedDebugAndroidTest
+            adb emu sensor set gyroscope 0.4:-0.2:0.1
+            gradle connectedDevDebugAndroidTest
             adb pull /sdcard/Download/screens ../screenshots
+            adb install -r ../release/apk/prod/release/app-prod-release.apk
+            adb shell am start -W -n ua.kpi.building_audit/.MainActivity
+            sleep 5
+            adb shell pidof ua.kpi.building_audit
+            adb exec-out screencap -p > ../screenshots/release_start.png
       - name: Print screenshots
         if: always()
         run: |

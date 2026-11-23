@@ -13,6 +13,8 @@ import org.osmdroid.config.Configuration
 import ua.kpi.building_audit.auth.JwtDecoder
 import ua.kpi.building_audit.auth.PrefsTokenStore
 import ua.kpi.building_audit.auth.SessionManager
+import ua.kpi.building_audit.data.files.AttachmentStore
+import ua.kpi.building_audit.data.files.ReadingsStore
 import ua.kpi.building_audit.data.local.AuditDatabase
 import ua.kpi.building_audit.data.local.LocalBuildingDataSource
 import ua.kpi.building_audit.data.remote.RemoteBuildingDataSource
@@ -23,11 +25,13 @@ import ua.kpi.building_audit.error.ErrorCenter
 import ua.kpi.building_audit.error.ErrorMapper
 import ua.kpi.building_audit.error.FileErrorJournal
 import ua.kpi.building_audit.location.LocationTracker
+import ua.kpi.building_audit.monitor.ResourceMonitor
 import ua.kpi.building_audit.network.AndroidNetworkMonitor
 import ua.kpi.building_audit.network.RetrofitFactory
 import ua.kpi.building_audit.notifications.AlertCenter
 import ua.kpi.building_audit.notifications.AlertNotifier
 import ua.kpi.building_audit.sensors.SensorReader
+import ua.kpi.building_audit.settings.ThemeSettings
 import java.io.File
 
 class EnergyAuditApp : Application() {
@@ -70,6 +74,11 @@ class AppContainer(context: Context) {
     val locationTracker = LocationTracker(context)
     val sensorReader = SensorReader(context)
     val alertCenter = AlertCenter(context, AlertNotifier(context).apply { createChannels() })
+    val readingsStore = ReadingsStore(File(context.filesDir, "readings"), gson)
+    val attachmentStore = AttachmentStore(File(context.filesDir, "attachments"), context.contentResolver, gson)
+    val reportsDir = File(context.filesDir, "reports")
+    val resourceMonitor = ResourceMonitor(context)
+    val themeSettings = ThemeSettings(context)
 
     init {
         scope.launch { errorCenter.authFailures.collect { sessionManager.end(it) } }

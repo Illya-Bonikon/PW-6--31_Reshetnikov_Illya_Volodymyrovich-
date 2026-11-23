@@ -1,20 +1,36 @@
 package ua.kpi.building_audit
 
 import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.net.Uri
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performScrollToNode
+import androidx.core.content.FileProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import ua.kpi.building_audit.settings.ThemeMode
+import java.io.File
 
 /**
  * Проходить застосунок так, як це робить користувач, і знімає екран після кожного кроку.
@@ -59,7 +75,7 @@ class ScreenshotTour {
     private fun open(destination: Destination) {
         compose.onNodeWithContentDescription("Меню").performClick()
         pause(600)
-        compose.onAllNodesWithText(destination.title).onLast().performClick()
+        compose.onNodeWithTag(drawerTag(destination)).performScrollTo().performClick()
         pause(1_500)
     }
 
@@ -67,7 +83,7 @@ class ScreenshotTour {
     fun tour() {
         compose.onNodeWithText("Аудитор").performClick()
         compose.onNodeWithText("Увійти").performClick()
-        compose.waitUntil(20_000) { compose.onAllNodesWithText(Destination.PZ17.title).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(20_000) { compose.onAllNodesWithText(Destination.PZ21.title).fetchSemanticsNodes().isNotEmpty() }
 
         // Реєстр завантажує будівлі з сервера в Room; решта екранів читає кеш.
         open(Destination.PZ9)
@@ -81,7 +97,7 @@ class ScreenshotTour {
         compose.onNodeWithContentDescription("Меню").performClick()
         pause(600)
         shot("drawer")
-        compose.onAllNodesWithText(Destination.PZ14.title).onLast().performClick()
+        compose.onNodeWithTag(drawerTag(Destination.PZ14)).performScrollTo().performClick()
         pause(6_000)
         compose.onAllNodesWithText("Гуртожиток № 19").onLast().performClick()
         pause(4_000)
@@ -132,5 +148,71 @@ class ScreenshotTour {
         open(Destination.PZ20)
         pause(3_000)
         shot("pz20_instruments")
+
+        open(Destination.PZ21)
+        compose.onAllNodes(isToggleable()).onFirst().performClick()
+        compose.onAllNodes(isToggleable()).onLast().performClick()
+        pause(2_000)
+        shot("pz21_animation")
+
+        open(Destination.PZ22)
+        pause(2_000)
+        shot("pz22_readings")
+
+        // Тестове зображення фасаду додається у вкладення першої будівлі так само, як після вибору з галереї.
+        val buildingId = runBlocking { container.buildingRepository.observeCached().first().first().id }
+        runBlocking { container.attachmentStore.import(share(facadeImage(), "facade.jpg"), buildingId) }
+
+        open(Destination.PZ24)
+        compose.onNodeWithText("Сформувати PDF").performClick()
+        compose.waitUntil(20_000) { container.reportsDir.listFiles().orEmpty().isNotEmpty() }
+        pause(1_500)
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Відкрити"))
+        pause(1_500)
+        shot("pz24_report")
+        val report = container.reportsDir.listFiles()!!.maxBy { it.lastModified() }
+        runBlocking { container.attachmentStore.import(share(report, report.name), buildingId) }
+
+        open(Destination.PZ23)
+        pause(2_000)
+        shot("pz23_attachments")
+
+        open(Destination.PZ26)
+        compose.onNodeWithText("Навантажити на 10 с").performClick()
+        pause(4_000)
+        shot("pz26_monitor")
+        compose.onNodeWithText("Темна").performClick()
+        pause(1_500)
+        shot("pz26_dark")
+        container.themeSettings.set(ThemeMode.SYSTEM)
+    }
+
+    private val container get() = (compose.activity.application as EnergyAuditApp).container
+
+    private fun share(file: File, name: String): Uri {
+        val target = File(compose.activity.cacheDir, "camera/$name").apply { parentFile?.mkdirs() }
+        file.copyTo(target, overwrite = true)
+        return FileProvider.getUriForFile(compose.activity, "${compose.activity.packageName}.files", target)
+    }
+
+    /** Схематичний фасад: стіна, ряди вікон і дах. */
+    private fun facadeImage(): File {
+        val bitmap = Bitmap.createBitmap(1200, 900, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint()
+        canvas.drawColor(Color.rgb(190, 215, 235))
+        paint.color = Color.rgb(176, 120, 90)
+        canvas.drawRect(150f, 200f, 1050f, 860f, paint)
+        paint.color = Color.rgb(90, 90, 100)
+        canvas.drawRect(120f, 160f, 1080f, 210f, paint)
+        paint.color = Color.rgb(225, 240, 250)
+        for (row in 0 until 4) for (col in 0 until 6) {
+            val left = 200f + col * 140f
+            val top = 250f + row * 150f
+            canvas.drawRect(left, top, left + 80f, top + 100f, paint)
+        }
+        val file = File(compose.activity.cacheDir, "facade_source.jpg")
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        return file
     }
 }
