@@ -42,7 +42,7 @@ fun TelemetryScreen(viewModel: TelemetryViewModel = viewModel(factory = Telemetr
         item {
             Spacer(Modifier.padding(top = 4.dp))
             if (state.buildings.isEmpty()) {
-                Banner("Кеш будівель порожній: спершу завантажте реєстр на екрані ПЗ 9.", WarningAmber)
+                Banner("Кеш будівель порожній: спершу завантажте реєстр на екрані «Реєстр будівель».", WarningAmber)
             }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(state.buildings, key = { it.id }) { building ->

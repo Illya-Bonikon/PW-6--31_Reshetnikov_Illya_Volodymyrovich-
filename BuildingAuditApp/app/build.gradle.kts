@@ -13,11 +13,11 @@ android {
 
     defaultConfig {
         applicationId = "ua.kpi.building_audit"
-        // java.util.Base64 для розбору JWT доступний з API 26.
-        minSdk = 26
+        // java.time на API 24–25 забезпечує desugaring, Base64 для JWT — kotlin.io.encoding.
+        minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "6.0"
+        versionCode = 7
+        versionName = "7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -72,6 +72,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -90,6 +91,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -20,6 +20,8 @@ class AlertNotifier(private val context: Context) {
     private val manager = NotificationManagerCompat.from(context)
 
     fun createChannels() {
+        // До Android 8 каналів немає, пріоритет задається в самому сповіщенні.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val importance = mapOf(
             AlertCategory.THRESHOLD to NotificationManager.IMPORTANCE_HIGH,
             AlertCategory.CONDENSATION to NotificationManager.IMPORTANCE_HIGH,

@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val container = (application as EnergyAuditApp).container
         // Сповіщення відкриває застосунок одразу на потрібному екрані.
-        val startRoute = intent.getStringExtra(EXTRA_ROUTE) ?: Destination.PZ21.route
+        val startRoute = intent.getStringExtra(EXTRA_ROUTE) ?: Destination.START.route
         setContent {
             val mode by container.themeSettings.mode.collectAsStateWithLifecycle()
             val dark = when (mode) {
@@ -112,25 +112,29 @@ fun AppRoot(container: AppContainer, startRoute: String) {
     }
 }
 
-/** Пункти бічного меню, згруповані за практичними роботами. */
+/** Пункти бічного меню, згруповані за модулями застосунку; назви констант відповідають практичним заняттям. */
 enum class Destination(val route: String, val work: String, val title: String) {
-    PZ9("pz9", "ПР3", "ПЗ 9: Repository"),
-    PZ10("pz10", "ПР3", "ПЗ 10: REST API"),
-    PZ11("pz11", "ПР3", "ПЗ 11: Сеанс"),
-    PZ12("pz12", "ПР3", "ПЗ 12: Помилки"),
-    PZ13("pz13", "ПР4", "ПЗ 13: Flow і корутини"),
-    PZ14("pz14", "ПР4", "ПЗ 14: Список і мапа"),
-    PZ15("pz15", "ПР4", "ПЗ 15: Фільтри"),
-    PZ16("pz16", "ПР4", "ПЗ 16: GPS"),
-    PZ17("pz17", "ПР5", "ПЗ 17: Сенсори"),
-    PZ18("pz18", "ПР5", "ПЗ 18: Сповіщення"),
-    PZ19("pz19", "ПР5", "ПЗ 19: Графіки"),
-    PZ20("pz20", "ПР5", "ПЗ 20: Прилади"),
-    PZ21("pz21", "ПР6", "ПЗ 21: Анімація"),
-    PZ22("pz22", "ПР6", "ПЗ 22: CSV і JSON"),
-    PZ23("pz23", "ПР6", "ПЗ 23: Фото й документи"),
-    PZ24("pz24", "ПР6", "ПЗ 24: PDF-звіт"),
-    PZ26("pz26", "ПР6", "ПЗ 26: Ресурси й тема")
+    PZ9("pz9", "Об'єкти", "Реєстр будівель"),
+    PZ14("pz14", "Об'єкти", "Список і мапа"),
+    PZ15("pz15", "Об'єкти", "Пошук і фільтри"),
+    PZ16("pz16", "Об'єкти", "Об'єкти поруч"),
+    PZ23("pz23", "Об'єкти", "Фото й документи"),
+    PZ13("pz13", "Моніторинг", "Телеметрія оболонки"),
+    PZ17("pz17", "Моніторинг", "Датчики"),
+    PZ20("pz20", "Моніторинг", "Прилади"),
+    PZ18("pz18", "Моніторинг", "Сповіщення"),
+    PZ26("pz26", "Моніторинг", "Ресурси й тема"),
+    PZ19("pz19", "Аналітика", "Споживання тепла"),
+    PZ21("pz21", "Аналітика", "Модернізація"),
+    PZ22("pz22", "Аналітика", "Покази лічильників"),
+    PZ24("pz24", "Аналітика", "PDF-звіт"),
+    PZ10("pz10", "Сервіс", "REST API"),
+    PZ11("pz11", "Сервіс", "Сеанс і ролі"),
+    PZ12("pz12", "Сервіс", "Діагностика помилок");
+
+    companion object {
+        val START = PZ9
+    }
 }
 
 private const val DETAIL_ROUTE = "building/{id}"

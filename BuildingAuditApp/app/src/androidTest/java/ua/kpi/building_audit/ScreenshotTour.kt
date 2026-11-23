@@ -81,14 +81,28 @@ class ScreenshotTour {
 
     @Test
     fun tour() {
+        pause(1_500)
+        shot("login")
         compose.onNodeWithText("Аудитор").performClick()
         compose.onNodeWithText("Увійти").performClick()
-        compose.waitUntil(20_000) { compose.onAllNodesWithText(Destination.PZ21.title).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(20_000) { compose.onAllNodesWithText(Destination.START.title).fetchSemanticsNodes().isNotEmpty() }
 
         // Реєстр завантажує будівлі з сервера в Room; решта екранів читає кеш.
         open(Destination.PZ9)
         pause(4_000)
         shot("pz09_registry")
+
+        open(Destination.PZ10)
+        pause(5_000)
+        shot("pz10_api")
+
+        open(Destination.PZ11)
+        pause(2_000)
+        shot("pz11_session")
+
+        open(Destination.PZ12)
+        pause(2_000)
+        shot("pz12_diagnostics")
 
         open(Destination.PZ13)
         pause(12_000)

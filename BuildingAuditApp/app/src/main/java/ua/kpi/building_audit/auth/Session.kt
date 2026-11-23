@@ -2,7 +2,8 @@ package ua.kpi.building_audit.auth
 
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
-import java.util.Base64
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 enum class Permission(val title: String) {
     VIEW_BUILDINGS("Перегляд реєстру будівель"),
@@ -47,7 +48,7 @@ class JwtDecoder(private val gson: Gson) {
         val parts = token.split('.')
         if (parts.size != 3) throw InvalidTokenException("JWT має складатися з трьох частин")
         val json = try {
-            String(Base64.getUrlDecoder().decode(parts[1]), Charsets.UTF_8)
+            String(decodeBase64Url(parts[1]), Charsets.UTF_8)
         } catch (error: IllegalArgumentException) {
             throw InvalidTokenException("Payload не є Base64URL")
         }
@@ -67,3 +68,8 @@ class JwtDecoder(private val gson: Gson) {
         )
     }
 }
+
+/** JWT передає Base64URL без «=» в кінці; Base64 з Kotlin вимагає доповнення, тому воно додається тут. */
+@OptIn(ExperimentalEncodingApi::class)
+private fun decodeBase64Url(value: String): ByteArray =
+    Base64.UrlSafe.decode(value + "=".repeat((4 - value.length % 4) % 4))

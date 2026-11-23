@@ -41,7 +41,7 @@ fun ConsumptionScreen(viewModel: ConsumptionViewModel = viewModel(factory = Cons
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Spacer(Modifier.padding(top = 4.dp))
-            if (state.buildings.isEmpty()) Banner("Кеш будівель порожній: спершу завантажте реєстр на екрані ПЗ 9.", WarningAmber)
+            if (state.buildings.isEmpty()) Banner("Кеш будівель порожній: спершу завантажте реєстр на екрані «Реєстр будівель».", WarningAmber)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(state.buildings, key = { it.id }) { building ->
                     FilterChip(selected = state.selected?.id == building.id, onClick = { viewModel.select(building) }, label = { Text(building.name) })
